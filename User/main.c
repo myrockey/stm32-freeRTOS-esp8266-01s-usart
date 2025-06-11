@@ -346,7 +346,8 @@ void Send_Task(void *pvParameters)
 		{
 			snprintf(message,sizeof(message),"{\\\"temperature\\\": %.2f}",r_queue);	
 			taskENTER_CRITICAL(); //进入临界区，防止中断打断
-			ESP8266_MQTT_Publish(message);//添加数据，发布给服务器
+			//ESP8266_MQTT_Publish(message);//添加数据，发布给服务器
+			ESP8266_SendPacket(PACKET_CMD_MQTT_PUBLISH, (uint8_t*)message, strlen(message));//发送固定格式的数据
 			taskEXIT_CRITICAL();  //退出临界区
 			printf("send Data to ThingsCloud:本次接收到的数据是%.2f\r\n",r_queue);		
 		}

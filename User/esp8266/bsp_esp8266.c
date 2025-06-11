@@ -519,3 +519,60 @@ char ESP8266_MQTT_Subscribe(void) {
     snprintf(cmd_buffer, sizeof(cmd_buffer), "AT+MQTTSUB=0,\"%s\",0\r\n", MQTT_COMMAND_SUB);
     return ESP8266_WiFi_SendCmd(cmd_buffer,"OK",20);
 }
+
+// 计算校验和
+static uint8_t calculate_checksum(uint8_t command, uint8_t *data, uint8_t length) {
+    uint8_t sum = command;
+    for (int i = 0; i < length; i++) {
+        sum += data[i];
+    }
+    return sum;
+}
+
+// 发送固定格式数据包
+void ESP8266_SendPacket(uint8_t command, uint8_t *data, uint8_t length) {
+    uint8_t buffer[PACKET_MIN_LEN + length];
+    uint8_t index = 0;
+
+    buffer[index++] = PACKET_HEADER;
+    buffer[index++] = length;
+    buffer[index++] = command;
+    memcpy(&buffer[index], data, length);
+    index += length;
+    buffer[index++] = calculate_checksum(command, data, length);
+    buffer[index++] = PACKET_TAIL;
+
+    USART2_DMA_SendData(buffer, sizeof(buffer));
+}
+
+// 解析固定格式数据包
+// 返回值：0-成功解析，1-数据不完整，2-校验和错误，3-包头或包尾错误
+int ESP8266_ParsePacket(uint8_t *rx_buffer, uint16_t rx_len, Packet_TypeDef *packet) {
+    if (rx_len < PACKET_MIN_LEN) {
+        return 1; // 数据不完整
+    }
+
+    if (rx_buffer[0] != PACKET_HEADER || rx_buffer[rx_len - 1] != PACKET_TAIL) {
+        return 3; // 包头或包尾错误
+    }
+
+    packet->header = rx_buffer[0];
+    packet->length = rx_buffer[1];
+    packet->command = rx_buffer[2];
+    packet->data = &rx_buffer[3];
+    packet->checksum = rx_buffer[rx_len - 2];
+    packet->tail = rx_buffer[rx_len - 1];
+
+    // 检查数据长度是否匹配
+    if (packet->length != (rx_len - PACKET_MIN_LEN)) {
+        return 1; // 数据长度不匹配
+    }
+
+    // 校验和检查
+    uint8_t calculated_checksum = calculate_checksum(packet->command, packet->data, packet->length);
+    if (calculated_checksum != packet->checksum) {
+        return 2; // 校验和错误
+    }
+
+    return 0; // 成功解析
+}
