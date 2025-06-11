@@ -1,0 +1,72 @@
+#ifndef __ESP8266_H
+#define	__ESP8266_H
+
+#include "FreeRTOS.h"
+#include "task.h"
+#include "queue.h"
+#include "stm32f10x.h"
+#include <stdio.h>
+#include <string.h>
+#include "globals.h" //全局变量头文件
+
+#define USART2_TX_Pin GPIO_Pin_2
+#define USART2_RX_Pin GPIO_Pin_3
+#define WIFI_RESET_IO_PIN GPIO_Pin_4
+#define RESET_IO(x)    GPIO_WriteBit(GPIOA, WIFI_RESET_IO_PIN, (BitAction)x)  //PA4控制WiFi的复位
+#define USART2_BAUDRATE 115200
+
+#define WIFI_SSID "test"
+#define WIFI_PASSWORD "12345678"
+#define MQTT_CLIENT_ID "12"
+#define MQTT_CLIENT_USER "ij6kv7tstqsrpzlx"
+#define MQTT_CLIENT_PASSWORD "qDsJd0CqfV"
+#define MQTT_HOST "gz-3-mqtt.iot-api.com"
+#define MQTT_PORT 1883
+#define MQTT_TOPIC "attributes"
+#define MQTT_COMMAND_SUB "command/send/1000" //监听thingsCloud下发的命令
+#define MQTT_QoS 0
+#define MQTT_RETAIN 0 //0-不保留信息
+#define CMD_BUFFER_SIZE 256
+
+//tcp连接服务器
+#define TCP_Server_IP "gz-3-device.iot-api.com"
+#define TCP_Server_Port 28801
+#define TCP_Server_Password "qDsJd0CqfV&ij6kv7tstqsrpzlx"
+
+void Delay_ms(uint32_t ms);
+// 串口2初始化函数
+void USART2_Init(void);
+// 发送字符串到串口
+void USART2_SendString(char* str);
+// 接收串口数据
+char USART2_Receive(void);
+// ESP8266相关函数
+void ESP8266_Reset_IO_Init(void);
+//清空接收缓存区
+void ESP8266_Buf_Clear(void);
+//发送命令
+char ESP8266_WiFi_SendCmd(char *cmd, char *res, uint8_t timeout);
+/*函数名：WiFi复位                                 */
+char ESP8266_WiFi_Reset(int timeout);
+/*函数名：WiFi加入路由器指令                       */
+char ESP8266_WiFi_JoinAP(int timeout);
+/*函数名：连接TCP服务器，并进入透传模式            */
+char ESP8266_WiFi_Connect_TCP_Server(int timeout);
+/*函数名：WiFi_Smartconfig                         */
+char ESP8266_WiFi_Smartconfig(int timeout);
+/*函数名：等待加入路由器                           */
+char ESP8266_WiFi_WaitAP(int timeout);
+/*函数名：WiFi连接IOT服务器                           */
+char ESP8266_WiFi_Connect_IoTServer(void);
+//连接到MQTT服务器
+char ESP8266_Connect_MQTT_Server(void);
+//MQTT连接IOT服务器
+char ESP8266_WiFi_MQTT_Connect_IoTServer(void);
+// 查询当前WIFI连接状态 返回： +CWJAP_DEF: 且 OK
+void ESP8266_CheckWiFiStatus(void);
+// 查询当前MQTT连接状态 返回：+MQTTCONN:<LinkID>,<state>,<scheme><"host">,<port>,<"path">,<reconnect> 且 OK
+void ESP8266_CheckMQTTStatus(void);
+void ESP8266_MQTT_Publish(char* message);
+char ESP8266_MQTT_Subscribe(void);
+#endif /* __ESP8266_H */
+
