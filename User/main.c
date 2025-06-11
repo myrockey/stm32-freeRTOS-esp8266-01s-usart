@@ -8,7 +8,7 @@
 #include "globals.h" //全局变量头文件
 #include "ring_buff.h"//环形缓冲区
 #include "timer3.h"
-#include "timer4.h"
+//#include "timer4.h"
 
 #include "bsp_led.h"
 #include "bsp_usart.h"
@@ -416,6 +416,9 @@ static void Receive_Task(void * pvParameters)
 							(TickType_t			)portMAX_DELAY);
 		
 		//printf("KEY_Task Running\r\n");
+		// 等待IDLE中断的通知
+		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);//等待通知
+
 		len = RingBuff_GetLen(&encoeanBuff);
         if (len) {
 			uint8_t received_str[len+1];
@@ -525,7 +528,7 @@ void BSP_Init(void)
 	RingBuff_Init(&encoeanBuff);//环形缓冲区初始化
 	
 	//Delay_init();//延时函数初始化
-	Tim4_Init(500,7200);//TIM4初始化，定时时间500*7200*1000/7200000 = 50ms
+	//Tim4_Init(500,7200);//TIM4初始化，定时时间500*7200*1000/7200000 = 50ms
 	LED_GPIO_Config();
 	
 	

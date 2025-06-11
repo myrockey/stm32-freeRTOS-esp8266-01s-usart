@@ -208,61 +208,64 @@ void SysTick_Handler(void)
 void USART2_IRQHandler(void)
 {
     uint32_t ulReturn;
+    uint16_t recv_size;
+    BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    
     /* 进入临界段 */
     ulReturn = taskENTER_CRITICAL_FROM_ISR();
 
-    if (USART_GetITStatus(USART2, USART_IT_RXNE) != RESET) {
-        uint8_t data = USART_ReceiveData(USART2);
+    // 处理空闲中断
+    if(USART_GetITStatus(USART2, USART_IT_IDLE) != RESET)
+    {
+        // 读取SR和DR寄存器以清除IDLE标志
+        USART2->SR;
+        USART2->DR;
         
-		if ((xEventGroupGetBitsFromISR(Event_Handle) & 0x01) == 0)//获取事件标志组数据，等于0说明未连接服务器，不开启定时器4（MQTT接收数据处理）定时器
-		{
-//			if(USART2->DR)                                        //处于指令配置状态时，非零值才保存到缓冲区	
-//			{                                     			 
-//				Usart2_RxBuff[Usart2_RxCounter] = USART2->DR;	  //保存到缓冲区	
-//				Usart2_RxCounter++; 						      //每接收1个字节的数据，Usart2_RxCounter加1，表示接收的数据总量+1 
-//			}
-			//必须过滤空字符，否则会导致 strstr((const char*)g_rx_esp8266_buf, "ready") != NULL 匹配不到
-			/*如果 g_rx_esp8266_buf 中包含空字符（'\0'），strstr 在遇到第一个空字符时就会停止搜索，从而无法找到后续的 "ready" 字符串。
-例如，如果缓冲区内容为 "abc\0ready"，strstr 只会搜索到 "abc" 部分，而不会继续搜索到 "ready"*/
-			if(data != '\0')
-			{
-				g_rx_esp8266_buf[g_rx_esp8266_cnt++] = data;
-			}
-		}
-		else
-		{
-//			Usart2_RxBuff[Usart2_RxCounter] = USART2->DR;//把接收到的数据保存到Usart2_RxBuff中
-//				
-//			if(Usart2_RxCounter == 0)				     //如果Usart2_RxCounter等于0，表示是接收的第1个数据，进入if分支	
-//			{    								
-//				TIM_Cmd(TIM4, ENABLE); 					 //使能定时器4
-//			}
-//			else										 //else分支，表示果Usart2_RxCounter不等于0，不是接收的第一个数据
-//			{                        									    
-//				TIM_SetCounter(TIM4, 0);  				 //置位定时器4
-//			}	
-//			Usart2_RxCounter++;         				 //每接收1个字节的数据，Usart2_RxCounter加1，表示接收的数据总量+1 				
-			if(g_rx_esp8266_cnt == 0)
-			{
-				TIM_Cmd(TIM4,ENABLE);//使能定时器
-			}
-			else 
-			{
-				TIM_SetCounter(TIM4, 0);//置为定时器
-			}
-			g_rx_esp8266_buf[g_rx_esp8266_cnt++] = data;
-		}
-				
-		if (g_rx_esp8266_cnt >= RX_BUFFER_SIZE) {
-			g_rx_esp8266_cnt = 0;
-			//printf("接收数据溢出\r\n");
-		}
-		
-        USART_ClearITPendingBit(USART2, USART_IT_RXNE);
-    }
+        // 停止DMA传输
+        DMA_Cmd(USART2_RX_DMA_CHANNEL, DISABLE);
+        
+        // 获取接收到的数据长度
+        recv_size = USART2_DMA_RX_BUFFER_SIZE - DMA_GetCurrDataCounter(USART2_RX_DMA_CHANNEL);
+        
+        if(recv_size > 0)
+        {
+            if ((xEventGroupGetBitsFromISR(Event_Handle) & 0x01) == 0)
+            {
+                // 未连接服务器时的数据处理
+                if(recv_size < RX_BUFFER_SIZE)
+                {
+                    memcpy(g_rx_esp8266_buf, (uint8_t*)USART2_RX_DMA_CHANNEL->CMAR, recv_size);
+                    g_rx_esp8266_cnt = recv_size;
+                }
+            }
+            else
+            {
+                // 已连接服务器时的数据处理
+                RingBuff_WriteNByte(&encoeanBuff, (uint8_t*)USART2_RX_DMA_CHANNEL->CMAR, recv_size);
+                
+                // 重置定时器3计数器（ping包计时器）
+                TIM_SetCounter(TIM3, 0);
 
+                // 通知接收任务处理数据
+                if(Receive_Task_Handle != NULL)
+                {
+                    vTaskNotifyGiveFromISR(Receive_Task_Handle, &xHigherPriorityTaskWoken);
+                }
+            }
+        }
+        
+        // 重新设置DMA传输数量并启动DMA
+        USART2_RX_DMA_CHANNEL->CNDTR = USART2_DMA_RX_BUFFER_SIZE;
+        DMA_Cmd(USART2_RX_DMA_CHANNEL, ENABLE);
+    }
+    
     /* 退出临界段 */
     taskEXIT_CRITICAL_FROM_ISR(ulReturn);
+    
+    if(xHigherPriorityTaskWoken){
+      // 如果需要进行任务切换，在中断退出时进行切换
+      portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
 }
 
 /*---------------------------------------------------------------*/
@@ -273,18 +276,19 @@ void USART2_IRQHandler(void)
 /*参  数：无                                       				 */
 /*返回值：无                                     				 */
 /*---------------------------------------------------------------*/
-void TIM4_IRQHandler(void)
+// 删除以下函数
+/*void TIM4_IRQHandler(void)
 {
-	if(TIM_GetITStatus(TIM4, TIM_IT_Update) != RESET)//如果TIM_IT_Update置位，表示TIM4溢出中断，进入if	
-	{   
-		RingBuff_WriteNByte(&encoeanBuff,g_rx_esp8266_buf,g_rx_esp8266_cnt);
-		g_rx_esp8266_cnt = 0;                                        	//串口2接收数据量变量清零
-		TIM_SetCounter(TIM3, 0);                                     	//清零定时器3计数器，重新计时ping包发送时间
-		TIM_Cmd(TIM4, DISABLE);                        				 	//关闭TIM4定时器
-		TIM_SetCounter(TIM4, 0);                        			 	//清零定时器4计数器
-		TIM_ClearITPendingBit(TIM4, TIM_IT_Update);     			 	//清除TIM4溢出中断标志 	
-	}
-}
+    if(TIM_GetITStatus(TIM4, TIM_IT_Update) != RESET)
+    {   
+        RingBuff_WriteNByte(&encoeanBuff,g_rx_esp8266_buf,g_rx_esp8266_cnt);
+        g_rx_esp8266_cnt = 0;                                        
+        TIM_SetCounter(TIM3, 0);                                     
+        TIM_Cmd(TIM4, DISABLE);                                      
+        TIM_SetCounter(TIM4, 0);                                     
+        TIM_ClearITPendingBit(TIM4, TIM_IT_Update);                 
+    }
+}*/
 
 /*---------------------------------------------------------------*/
 /*函数名：void TIM3_IRQHandler(void)				      			 */

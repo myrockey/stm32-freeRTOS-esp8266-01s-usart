@@ -1,5 +1,71 @@
 #include "bsp_esp8266.h"
 
+
+// DMA配置函数
+void USART2_DMA_Init(void)
+{
+    DMA_InitTypeDef DMA_InitStructure;
+    
+    // 开启DMA1时钟
+    RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
+    
+    // 配置DMA发送通道
+    DMA_DeInit(USART2_TX_DMA_CHANNEL);
+    DMA_InitStructure.DMA_PeripheralBaseAddr = (uint32_t)&USART2->DR;
+    DMA_InitStructure.DMA_MemoryBaseAddr = 0;  // 后续发送时设置
+    DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralDST;
+    DMA_InitStructure.DMA_BufferSize = 0;      // 后续发送时设置
+    DMA_InitStructure.DMA_PeripheralInc = DMA_PeripheralInc_Disable;
+    DMA_InitStructure.DMA_MemoryInc = DMA_MemoryInc_Enable;
+    DMA_InitStructure.DMA_PeripheralDataSize = DMA_PeripheralDataSize_Byte;
+    DMA_InitStructure.DMA_MemoryDataSize = DMA_MemoryDataSize_Byte;
+    DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;
+    DMA_InitStructure.DMA_Priority = DMA_Priority_High;
+    DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
+    DMA_Init(USART2_TX_DMA_CHANNEL, &DMA_InitStructure);
+    
+    // 配置DMA接收通道
+    DMA_DeInit(USART2_RX_DMA_CHANNEL);
+    DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
+    DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;  // 循环接收模式
+    DMA_Init(USART2_RX_DMA_CHANNEL, &DMA_InitStructure);
+    
+    // 使能USART2的DMA发送和接收请求
+    USART_DMACmd(USART2, USART_DMAReq_Tx, ENABLE);
+    USART_DMACmd(USART2, USART_DMAReq_Rx, ENABLE);
+}
+
+// 使用DMA发送数据
+void USART2_DMA_SendData(uint8_t *pData, uint16_t Size)
+{
+    // 等待上次传输完成
+    while(DMA_GetFlagStatus(USART2_TX_DMA_FLAG_TC) == RESET);
+    
+    // 清除标志
+    DMA_ClearFlag(USART2_TX_DMA_FLAG_GL);
+    
+    // 设置数据地址和长度
+    USART2_TX_DMA_CHANNEL->CMAR = (uint32_t)pData;
+    USART2_TX_DMA_CHANNEL->CNDTR = Size;
+    
+    // 启动传输
+    DMA_Cmd(USART2_TX_DMA_CHANNEL, ENABLE);
+}
+
+// 使用DMA接收数据
+void USART2_DMA_ReceiveData(uint8_t *pData, uint16_t Size)
+{
+    // 清除标志
+    DMA_ClearFlag(USART2_RX_DMA_FLAG_GL);
+    
+    // 设置数据地址和长度
+    USART2_RX_DMA_CHANNEL->CMAR = (uint32_t)pData;
+    USART2_RX_DMA_CHANNEL->CNDTR = Size;
+    
+    // 启动接收
+    DMA_Cmd(USART2_RX_DMA_CHANNEL, ENABLE);
+}
+
 // 串口2初始化函数
 void USART2_Init(void) {
     GPIO_InitTypeDef GPIO_InitStructure;
@@ -30,8 +96,8 @@ void USART2_Init(void) {
     USART_Init(USART2, &USART_InitStructure);
     USART_Cmd(USART2, ENABLE);
 
-    // 使能USART2接收中断
-    USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
+	// 初始化DMA
+	USART2_DMA_Init();
 
     // 配置NVIC
     NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
@@ -39,14 +105,21 @@ void USART2_Init(void) {
     NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&NVIC_InitStructure);
+
+    // 使能空闲中断，用于DMA接收
+    USART_ITConfig(USART2, USART_IT_IDLE, ENABLE);    
+    // 注释掉RXNE中断，因为使用DMA接收
+    // USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
+
 }
 
 // 发送字符串到串口
 void USART2_SendString(char* str) {
-    while (*str) {
-        USART_SendData(USART2, *str++);
-		while (USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET);
-    }
+    // while (*str) {
+    //     USART_SendData(USART2, *str++);
+	// 	while (USART_GetFlagStatus(USART2, USART_FLAG_TXE) == RESET);
+    // }
+	USART2_DMA_SendData((uint8_t*)str, strlen(str));//使用DMA方式发送
 }
 
 

@@ -33,6 +33,18 @@
 #define TCP_Server_Port 28801
 #define TCP_Server_Password "qDsJd0CqfV&ij6kv7tstqsrpzlx"
 
+// USART2 DMA配置
+#define USART2_TX_DMA_CHANNEL           DMA1_Channel7
+#define USART2_RX_DMA_CHANNEL           DMA1_Channel6
+#define USART2_TX_DMA_FLAG_TC           DMA1_FLAG_TC7
+#define USART2_RX_DMA_FLAG_TC           DMA1_FLAG_TC6
+#define USART2_TX_DMA_FLAG_GL           DMA1_FLAG_GL7
+#define USART2_RX_DMA_FLAG_GL           DMA1_FLAG_GL6
+
+// DMA缓冲区大小
+#define USART2_DMA_RX_BUFFER_SIZE       512
+#define USART2_DMA_TX_BUFFER_SIZE       512
+
 void Delay_ms(uint32_t ms);
 // 串口2初始化函数
 void USART2_Init(void);
@@ -68,5 +80,10 @@ void ESP8266_CheckWiFiStatus(void);
 void ESP8266_CheckMQTTStatus(void);
 void ESP8266_MQTT_Publish(char* message);
 char ESP8266_MQTT_Subscribe(void);
+
+// 添加DMA相关函数声明
+void USART2_DMA_Init(void);
+void USART2_DMA_SendData(uint8_t *pData, uint16_t Size);
+void USART2_DMA_ReceiveData(uint8_t *pData, uint16_t Size);
 #endif /* __ESP8266_H */
 
