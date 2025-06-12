@@ -322,33 +322,25 @@ char ESP8266_WiFi_WaitAP(int timeout)
 /*-------------------------------------------------*/
 char ESP8266_WiFi_Connect_IoTServer(void)
 {	
-	printf("准备AT测试WIFI模块\r\n");                   
-	if(ESP8266_WiFi_SendCmd("AT\r\n","OK",20))							  //复位，100ms超时单位，总计5s超时时间
-	{                             
-		printf("AT测试WIFI模块失败，请检查硬件连接\r\n");	      //返回非0值，进入if
-		return 16;                                 //返回1
-	} 
-	printf("AT测试成功\r\n");
-	
-	printf("准备设置STA模式\r\n");                
-	if(ESP8266_WiFi_SendCmd("AT+CWMODE=1","OK",50))			  //设置STA模式，100ms超时单位，总计5s超时时间
-	{             
-		printf("设置STA模式失败，准备重启\r\n");  //返回非0值，进入if
-		return 2;                                 //返回2
-	}
-	printf("设置STA模式成功\r\n");          
-	
-	
-	printf("准备复位模块\r\n");                   
-	if(ESP8266_WiFi_Reset(50))							  //复位，100ms超时单位，总计5s超时时间
+	printf("准备复位模块\r\n");//设置模式后，需重启才能生效                   
+	if(ESP8266_WiFi_Reset(100))							  //复位，100ms超时单位，总计5s超时时间
+	//if(ESP8266_WiFi_SendCmd("AT+RST\r\n","OK",100))							  //复位，100ms超时单位，总计5s超时时间
 	{                             
 		printf("复位失败，准备重启\r\n");	      //返回非0值，进入if
 		return 1;                                 //返回1
 	} 
-	printf("复位成功\r\n");                 
+	printf("复位成功\r\n"); 
+		 
+	printf("准备设置STA模式\r\n");                
+	if(ESP8266_WiFi_SendCmd("AT+CWMODE=1\r\n","OK",100))			  //设置STA模式，100ms超时单位，总计5s超时时间
+	{             
+		printf("设置STA模式失败，准备重启\r\n");  //返回非0值，进入if
+		return 2;                                 //返回2
+	}
+	printf("设置STA模式成功\r\n");        
 	                            
 	printf("准备取消自动连接\r\n");            	  
-	if(ESP8266_WiFi_SendCmd("AT+CWAUTOCONN=0","OK",50))		  //取消自动连接，100ms超时单位，总计5s超时时间
+	if(ESP8266_WiFi_SendCmd("AT+CWAUTOCONN=0\r\n","OK",50))		  //取消自动连接，100ms超时单位，总计5s超时时间
 	{       
 		printf("取消自动连接失败，准备重启\r\n"); //返回非0值，进入if
 		return 3;                                 //返回3
@@ -364,7 +356,7 @@ char ESP8266_WiFi_Connect_IoTServer(void)
 	printf("连接路由器成功\r\n");       		
 
 	printf("准备设置透传\r\n");                    
-	if(ESP8266_WiFi_SendCmd("AT+CIPMODE=1","OK",50)) 		  //设置透传，100ms超时单位，总计5s超时时间
+	if(ESP8266_WiFi_SendCmd("AT+CIPMODE=1\r\n","OK",50)) 		  //设置透传，100ms超时单位，总计5s超时时间
 	{           
 		printf("设置透传失败，准备重启\r\n");     //返回非0值，进入if
 		return 8;                                 //返回8
@@ -372,7 +364,7 @@ char ESP8266_WiFi_Connect_IoTServer(void)
 	printf("设置透传成功\r\n");              
 	
 	printf("准备关闭多路连接\r\n");               
-	if(ESP8266_WiFi_SendCmd("AT+CIPMUX=0","OK",50)) 		      //关闭多路连接，100ms超时单位，总计5s超时时间
+	if(ESP8266_WiFi_SendCmd("AT+CIPMUX=0\r\n","OK",50)) 		      //关闭多路连接，100ms超时单位，总计5s超时时间
 	{            
 		printf("关闭多路连接失败，准备重启\r\n"); //返回非0值，进入if
 		return 9;                                 //返回9
