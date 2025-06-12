@@ -346,8 +346,7 @@ void Send_Task(void *pvParameters)
 		{
 			snprintf(message,sizeof(message),"{\\\"temperature\\\": %.2f}",r_queue);	
 			taskENTER_CRITICAL(); //进入临界区，防止中断打断
-			//ESP8266_MQTT_Publish(message);//添加数据，发布给服务器
-			ESP8266_SendPacket(PACKET_CMD_MQTT_PUBLISH, (uint8_t*)message, strlen(message));//发送固定格式的数据
+			ESP8266_MQTT_Publish(message);//添加数据，发布给服务器
 			taskEXIT_CRITICAL();  //退出临界区
 			printf("send Data to ThingsCloud:本次接收到的数据是%.2f\r\n",r_queue);		
 		}
@@ -407,7 +406,6 @@ void Receive_Task(void * pvParameters)
 {
 	float temperature;
 	int len  = 0;
-	int status = 0;
 	Packet_TypeDef packet;//数据包
 	while(1)
 	{
@@ -426,15 +424,7 @@ void Receive_Task(void * pvParameters)
         if (len) {
 			uint8_t received_str[len+1];
 			RingBuff_ReadNByte(&encoeanBuff,received_str,len);
-			status = ESP8266_ParsePacket(received_str,len,&packet);//从字符串数据包中解析有效数据结构体
-			if(status != 0)
-			{
-				printf("ParsePacket error:%d \r\n",status);
-				vTaskDelay(20);//延时20个tick
-				return status;
-			}
-			memcpy(received_str,packet.data,packet.length);
-            received_str[packet.length] = '\0';
+            received_str[len] = '\0';
             // 输出接收到的字符串
             printf("Received: %s\n", received_str);
 
