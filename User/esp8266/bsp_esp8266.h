@@ -48,15 +48,20 @@
 // 定义数据包结构体
 #define PACKET_HEADER 0xAA    // 包头
 #define PACKET_TAIL   0x55    // 包尾
-#define PACKET_MIN_LEN 5      // 最小包长度：包头(1) + 长度(1) + 命令(1) + 校验(1) + 包尾(1)
+#define PACKET_HEADER_LEN 1
+#define PACKET_LENGTH_LEN 2 // 长度字段现在是 2 字节
+#define PACKET_CMD_LEN 1
+#define PACKET_CHECKSUM_LEN 4 // 校验和现在是 4 字节
+#define PACKET_TAIL_LEN 1
+#define PACKET_MIN_LEN (PACKET_HEADER_LEN + PACKET_LENGTH_LEN + PACKET_CMD_LEN + PACKET_CHECKSUM_LEN + PACKET_TAIL_LEN) // 最小包长度
 #define PACKET_CMD_MQTT_PUBLISH 0x01 // For publishing MQTT 
 #define PACKET_CMD_GET_VALUE 0x02 // For getting value
 typedef struct {
     uint8_t header;         // 包头 0xAA
-    uint8_t length;         // 数据长度（不包含包头、长度、校验和包尾）
+    uint16_t length;         // 数据长度（不包含包头、长度、校验和包尾）
     uint8_t command;        // 命令字
     uint8_t *data;          // 数据部分
-    uint8_t checksum;       // 校验和
+    uint32_t checksum;       // 校验和
     uint8_t tail;           // 包尾 0x55
 } Packet_TypeDef;
 
@@ -102,8 +107,8 @@ void USART2_DMA_SendData(uint8_t *pData, uint16_t Size);
 void USART2_DMA_ReceiveData(uint8_t *pData, uint16_t Size);
 
 // 新增的包处理函数声明
-void ESP8266_SendPacket(uint8_t command, uint8_t *data, uint8_t length);
-int ESP8266_ParsePacket(uint8_t *rx_buffer, uint16_t rx_len, Packet_TypeDef *packet);
+void ESP8266_SendPacket(uint8_t command, uint8_t *data, uint16_t length);
+int ESP8266_ParsePacket(uint8_t *rx_buffer, uint32_t rx_len, Packet_TypeDef *packet);
 
 #endif /* __ESP8266_H */
 

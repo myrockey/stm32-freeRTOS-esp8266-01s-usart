@@ -521,8 +521,8 @@ char ESP8266_MQTT_Subscribe(void) {
 }
 
 // 计算校验和
-static uint8_t calculate_checksum(uint8_t command, uint8_t *data, uint8_t length) {
-    uint8_t sum = command;
+static uint32_t calculate_checksum(uint8_t command, uint8_t *data, uint16_t length) {
+    uint32_t sum = command;
     for (int i = 0; i < length; i++) {
         sum += data[i];
     }
@@ -530,16 +530,21 @@ static uint8_t calculate_checksum(uint8_t command, uint8_t *data, uint8_t length
 }
 
 // 发送固定格式数据包
-void ESP8266_SendPacket(uint8_t command, uint8_t *data, uint8_t length) {
+void ESP8266_SendPacket(uint8_t command, uint8_t *data, uint16_t length) {
+    uint32_t calculated_checksum_val = calculate_checksum(command, data, length);
     uint8_t buffer[PACKET_MIN_LEN + length];
     uint8_t index = 0;
 
     buffer[index++] = PACKET_HEADER;
-    buffer[index++] = length;
+    buffer[index++] = (uint8_t)(length >> 8); // 长度高字节
+    buffer[index++] = (uint8_t)(length & 0xFF); // 长度低字节
     buffer[index++] = command;
     memcpy(&buffer[index], data, length);
     index += length;
-    buffer[index++] = calculate_checksum(command, data, length);
+    buffer[index++] = (uint8_t)(calculated_checksum_val >> 24); // 校验和最高字节
+    buffer[index++] = (uint8_t)(calculated_checksum_val >> 16); // 校验和次高字节
+    buffer[index++] = (uint8_t)(calculated_checksum_val >> 8);  // 校验和次低字节
+    buffer[index++] = (uint8_t)(calculated_checksum_val & 0xFF); // 校验和最低字节
     buffer[index++] = PACKET_TAIL;
 
     USART2_DMA_SendData(buffer, sizeof(buffer));
@@ -547,7 +552,7 @@ void ESP8266_SendPacket(uint8_t command, uint8_t *data, uint8_t length) {
 
 // 解析固定格式数据包
 // 返回值：0-成功解析，1-数据不完整，2-校验和错误，3-包头或包尾错误
-int ESP8266_ParsePacket(uint8_t *rx_buffer, uint16_t rx_len, Packet_TypeDef *packet) {
+int ESP8266_ParsePacket(uint8_t *rx_buffer, uint32_t rx_len, Packet_TypeDef *packet) {
     if (rx_len < PACKET_MIN_LEN) {
         return 1; // 数据不完整
     }
@@ -557,10 +562,13 @@ int ESP8266_ParsePacket(uint8_t *rx_buffer, uint16_t rx_len, Packet_TypeDef *pac
     }
 
     packet->header = rx_buffer[0];
-    packet->length = rx_buffer[1];
-    packet->command = rx_buffer[2];
-    packet->data = &rx_buffer[3];
-    packet->checksum = rx_buffer[rx_len - 2];
+    packet->length = ((uint16_t)rx_buffer[1] << 8) | rx_buffer[2]; // 组合高低字节
+    packet->command = rx_buffer[3];
+    packet->data = &rx_buffer[4];
+    packet->checksum = ((uint32_t)rx_buffer[rx_len - 5] << 24) | \
+                       ((uint32_t)rx_buffer[rx_len - 4] << 16) | \
+                       ((uint32_t)rx_buffer[rx_len - 3] << 8)  | \
+                       rx_buffer[rx_len - 2]; // 组合 4 字节校验和
     packet->tail = rx_buffer[rx_len - 1];
 
     // 检查数据长度是否匹配
@@ -569,8 +577,8 @@ int ESP8266_ParsePacket(uint8_t *rx_buffer, uint16_t rx_len, Packet_TypeDef *pac
     }
 
     // 校验和检查
-    uint8_t calculated_checksum = calculate_checksum(packet->command, packet->data, packet->length);
-    if (calculated_checksum != packet->checksum) {
+    uint32_t calculated_checksum_val = calculate_checksum(packet->command, packet->data, packet->length);
+    if (calculated_checksum_val != packet->checksum) {
         return 2; // 校验和错误
     }
 

@@ -22,17 +22,17 @@
 可以为NULL */
 
 /* 创建任务句柄 */
-static TaskHandle_t AppTaskCreate_Handle = NULL;
+TaskHandle_t AppTaskCreate_Handle = NULL;
 //LED任务 
-static TaskHandle_t LED_Task_Handle;
+TaskHandle_t LED_Task_Handle;
 
 TaskHandle_t WIFI_Task_Handle = NULL;
 /* 发送命令任务句柄 */
-static TaskHandle_t Send_Task_Handle = NULL;
+TaskHandle_t Send_Task_Handle = NULL;
 /* 热敏传感器任务句柄 */
-static TaskHandle_t Temperature_Task_Handle = NULL;
+TaskHandle_t Temperature_Task_Handle = NULL;
 
-static TaskHandle_t Receive_Task_Handle = NULL;
+TaskHandle_t Receive_Task_Handle = NULL;
 
 /* 内核对象句柄 */
 /* 信号量、消息队列、事件标志组、软件定时器这些都属于内核的对象，要想使用这些内核对象
@@ -78,19 +78,19 @@ const UBaseType_t MESSAGE_DATA_TX_LEN = 100;//每条消息大小，单位字节
 						函数声明 
 ***********************************************************
 */
-static void AppTaskCreate(void);/* 用于创建任务 */
+void AppTaskCreate(void);/* 用于创建任务 */
 
-static void LED_Task(void *pvParameters);
+void LED_Task(void *pvParameters);
 
 void WIFI_Task(void * pvParameters);/* WIFI_Task任务实现 */
 
-static void Send_Task(void * pvParameters);/* Send_Task任务实现 */
+void Send_Task(void * pvParameters);/* Send_Task任务实现 */
 
-static void Temperature_Task(void *pvParameters);/* Temperature_Task热敏传感器任务实现 */
+void Temperature_Task(void *pvParameters);/* Temperature_Task热敏传感器任务实现 */
 
-static void Receive_Task(void * pvParameters);/* Receive_Task任务实现 */
+void Receive_Task(void * pvParameters);/* Receive_Task任务实现 */
 
-static void BSP_Init(void); /* 用于初始化板子相关资源 */
+void BSP_Init(void); /* 用于初始化板子相关资源 */
 
 /**
 *
@@ -139,7 +139,7 @@ int main(void)
 @参数：无
 @返回值：无
 */
-static void AppTaskCreate(void)
+void AppTaskCreate(void)
 {
 	BaseType_t xReturn = pdPASS;/* 定义1个创建信息返回值，默认为pdPASS */
 	taskENTER_CRITICAL();//进入临界区
@@ -287,7 +287,7 @@ void LED_Task(void *pvParameters)
 @参数：
 @返回值：无
 */
-static void WIFI_Task(void * pvParameters)
+void WIFI_Task(void * pvParameters)
 {
 	while(1)
 	{
@@ -403,10 +403,12 @@ void Temperature_Task(void *pvParameters)
 @参数：
 @返回值：无
 */
-static void Receive_Task(void * pvParameters)
+void Receive_Task(void * pvParameters)
 {
 	float temperature;
 	int len  = 0;
+	int status = 0;
+	Packet_TypeDef packet;//数据包
 	while(1)
 	{
 		//服务器连接事件发生执行此任务，否则挂起
@@ -424,7 +426,15 @@ static void Receive_Task(void * pvParameters)
         if (len) {
 			uint8_t received_str[len+1];
 			RingBuff_ReadNByte(&encoeanBuff,received_str,len);
-            received_str[len] = '\0';
+			status = ESP8266_ParsePacket(received_str,len,&packet);//从字符串数据包中解析有效数据结构体
+			if(status != 0)
+			{
+				printf("ParsePacket error:%d \r\n",status);
+				vTaskDelay(20);//延时20个tick
+				return status;
+			}
+			memcpy(received_str,packet.data,packet.length);
+            received_str[packet.length] = '\0';
             // 输出接收到的字符串
             printf("Received: %s\n", received_str);
 
@@ -461,62 +471,6 @@ static void Receive_Task(void * pvParameters)
 		vTaskDelay(20);//延时20个tick
 	}
 }
-
-//static void Receive_Task(void * pvParameters)
-//{
-//	while(1)
-//	{
-//		//服务器连接事件发生执行此任务，否则挂起
-//		xEventGroupWaitBits((EventGroupHandle_t	)Event_Handle,		
-//							(EventBits_t		)WIFI_CONNECT,
-//							(BaseType_t			)pdFALSE,				
-//							(BaseType_t			)pdTRUE,
-//							(TickType_t			)portMAX_DELAY);
-//		
-//		//printf("KEY_Task Running\r\n");
-//        if (g_rx_esp8266_cnt != g_rx_esp8266_pre) {
-//            uint16_t len = (g_rx_esp8266_cnt - g_rx_esp8266_pre + RX_BUFFER_SIZE) % RX_BUFFER_SIZE;
-//            char received_str[RX_BUFFER_SIZE];
-//            for (uint16_t i = 0; i < len; i++) {
-//                received_str[i] = g_rx_esp8266_buf[(g_rx_esp8266_pre + i) % RX_BUFFER_SIZE];
-//            }
-//            received_str[len] = '\0';
-//            g_rx_esp8266_pre = g_rx_esp8266_cnt;
-
-//            // 输出接收到的字符串
-//            printf("Received: %s\n", received_str);
-
-//            // ping状态，mqtt连接成功
-//            if (strstr(received_str, "MQTTCONN:") != NULL && strstr(received_str, "OK") != NULL) {
-//                printf("PING报文回复\r\n");                       
-//				if(pingFlag == 1)
-//				{                   						     //如果pingFlag=1，表示第一次发送
-//					pingFlag = 0;    				       		 //要清除pingFlag标志
-//				}
-//				else if(pingFlag > 1)	
-//				{ 				 								 //如果pingFlag>1，表示是多次发送了，而且是2s间隔的快速发送
-//					pingFlag = 0;     				      		 //要清除pingFlag标志
-//					TIM3_ENABLE_30S(); 				      		 //PING定时器重回30s的时间
-//					xEventGroupSetBits(Event_Handle, PING_MODE); //30s的PING定时器，设置事件标志位
-//				}
-//            }
-//			
-//			// 获取远程命令
-//			if(strstr(received_str, "getValue") != NULL && strstr(received_str, "state") != NULL){
-//				printf("服务器等级0推送\r\n"); 		   	 //串口输出信息 
-//				float temperature = Thermistor_Read_Temperature();
-//				// 将温度数据发送到队列
-//				if (xQueueSend(Message_Queue, &temperature, 0) != pdPASS)
-//				{
-//					printf("Data Queue Full, Data Dropped\r\n");
-//				}
-//				printf("getValue getTemperature: %.2f C\r\n", temperature);
-//			}
-//			
-//        }
-//		vTaskDelay(20);//延时20个tick
-//	}
-//}
 
 /* 所有板子上的初始化均可放在这个函数里 */
 void BSP_Init(void)

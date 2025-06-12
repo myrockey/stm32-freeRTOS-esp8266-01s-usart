@@ -35,9 +35,9 @@
 #include "ring_buff.h"//环形缓冲区
 
 extern TaskHandle_t WIFI_Task_Handle;
-extern  EventGroupHandle_t Event_Handle;
+extern EventGroupHandle_t Event_Handle;
 extern const int PING_MODE;
-
+extern TaskHandle_t Receive_Task_Handle;
 
 /** @addtogroup STM32F10x_StdPeriph_Template
   * @{
@@ -183,28 +183,6 @@ void SysTick_Handler(void)
 
 
 /******************* (C) COPYRIGHT 2011 STMicroelectronics *****END OF FILE****/
-//extern volatile uint8_t esp8266_buf[256];
-//extern volatile uint16_t esp8266_cnt;
-
-//void USART2_IRQHandler(void)
-//{
-//  uint32_t ulReturn;
-//  /* 进入临界段，临界段可以嵌套 */
-//  ulReturn = taskENTER_CRITICAL_FROM_ISR();
-
-//	if (USART_GetFlagStatus(USART2, USART_FLAG_RXNE) != RESET) {
-//    uint8_t data = USART_ReceiveData(USART2);
-//    esp8266_buf[esp8266_cnt++] = data;
-//    if (esp8266_cnt >= sizeof(esp8266_buf)) {
-//        esp8266_cnt = 0;
-//    }
-//    USART_ClearITPendingBit(USART2, USART_IT_RXNE);
-//  }
-//	
-//  /* 退出临界段 */
-//  taskEXIT_CRITICAL_FROM_ISR( ulReturn );
-//}
-
 void USART2_IRQHandler(void)
 {
     uint32_t ulReturn;
@@ -234,8 +212,18 @@ void USART2_IRQHandler(void)
                 // 未连接服务器时的数据处理
                 if(recv_size < RX_BUFFER_SIZE)
                 {
-                    memcpy(g_rx_esp8266_buf, (uint8_t*)USART2_RX_DMA_CHANNEL->CMAR, recv_size);
+                    Filter_memcpy(g_rx_esp8266_buf, (uint8_t*)USART2_RX_DMA_CHANNEL->CMAR, recv_size);
                     g_rx_esp8266_cnt = recv_size;
+                }
+                else
+                {
+                  Filter_memcpy(g_rx_esp8266_buf, (uint8_t*)USART2_RX_DMA_CHANNEL->CMAR, RX_BUFFER_SIZE);
+                  g_rx_esp8266_cnt = RX_BUFFER_SIZE;
+                  // 可以添加一个标志位表示数据溢出
+                  // uint8_t overflow_flag = 1;
+
+                  // 可以通过LED或其他方式提示用户数据溢出
+                  // LED_RED_ON();
                 }
             }
             else

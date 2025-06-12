@@ -15,5 +15,6 @@ extern uint8_t g_rx_esp8266_buf[RX_BUFFER_SIZE];//接收缓冲区
 extern volatile uint32_t g_rx_esp8266_cnt;// 当前接收的字节数
 
 extern void Delay_ms(uint32_t ms);
+extern void Filter_memcpy(uint8_t *dst, uint8_t *src, int size);
 
 #endif /*_GLOBALS_H*/
