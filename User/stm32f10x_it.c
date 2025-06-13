@@ -186,7 +186,6 @@ void SysTick_Handler(void)
 void USART2_IRQHandler(void)
 {
     uint32_t ulReturn;
-    uint16_t recv_size;
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
     
     /* 进入临界段 */
@@ -203,22 +202,22 @@ void USART2_IRQHandler(void)
         DMA_Cmd(USART2_RX_DMA_CHANNEL, DISABLE);
         
         // 获取接收到的数据长度
-        recv_size = USART2_DMA_RX_BUFFER_SIZE - DMA_GetCurrDataCounter(USART2_RX_DMA_CHANNEL);
+        g_rx_dma_cnt = USART2_DMA_RX_BUFFER_SIZE - DMA_GetCurrDataCounter(USART2_RX_DMA_CHANNEL);
         
-        if(recv_size > 0)
+        if(g_rx_dma_cnt > 0)
         {
             if ((xEventGroupGetBitsFromISR(Event_Handle) & 0x01) == 0)
             {
                 // 未连接服务器时的数据处理
-                if(recv_size < RX_BUFFER_SIZE)
+                if(g_rx_dma_cnt < USART2_DMA_RX_BUFFER_SIZE)
                 {
-                    Filter_memcpy(g_rx_esp8266_buf, (uint8_t*)USART2_RX_DMA_CHANNEL->CMAR, recv_size);
-                    g_rx_esp8266_cnt = recv_size;
+                    Filter_memcpy(g_rx_esp8266_buf, g_rx_dma_buf, g_rx_dma_cnt);
+                    g_rx_esp8266_cnt = g_rx_dma_cnt;
                 }
                 else
                 {
-                  Filter_memcpy(g_rx_esp8266_buf, (uint8_t*)USART2_RX_DMA_CHANNEL->CMAR, RX_BUFFER_SIZE);
-                  g_rx_esp8266_cnt = RX_BUFFER_SIZE;
+                  Filter_memcpy(g_rx_esp8266_buf, g_rx_dma_buf, USART2_DMA_RX_BUFFER_SIZE);
+                  g_rx_esp8266_cnt = USART2_DMA_RX_BUFFER_SIZE;
                   // 可以添加一个标志位表示数据溢出
                   // uint8_t overflow_flag = 1;
 
@@ -229,7 +228,7 @@ void USART2_IRQHandler(void)
             else
             {
                 // 已连接服务器时的数据处理
-                RingBuff_WriteNByte(&encoeanBuff, (uint8_t*)USART2_RX_DMA_CHANNEL->CMAR, recv_size);
+                RingBuff_WriteNByte(&encoeanBuff, g_rx_dma_buf, g_rx_dma_cnt);
                 
                 // 重置定时器3计数器（ping包计时器）
                 TIM_SetCounter(TIM3, 0);
