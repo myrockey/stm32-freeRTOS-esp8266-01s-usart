@@ -340,8 +340,8 @@ char ESP8266_WiFi_Connect_IoTServer(void)
 	if(ESP8266_WiFi_Reset(100))							  //复位，100ms超时单位，总计5s超时时间
 	//if(ESP8266_WiFi_SendCmd("AT+RST\r\n","OK",100))							  //复位，100ms超时单位，总计5s超时时间
 	{                             
-		printf("AT测试WIFI模块失败，请检查硬件连接\r\n");	      //返回非0值，进入if
-		return 16;                                 //返回1
+		printf("复位失败，准备重启\r\n");	      //返回非0值，进入if
+		return 1;                                 //返回1
 	} 
 	printf("复位成功\r\n");        
 	                            
