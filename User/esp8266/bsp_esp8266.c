@@ -331,6 +331,14 @@ char ESP8266_WiFi_WaitAP(int timeout)
 /*-------------------------------------------------*/
 char ESP8266_WiFi_Connect_IoTServer(void)
 {	
+	printf("准备设置STA模式\r\n");                
+	if(ESP8266_WiFi_SendCmd("AT+CWMODE=1\r\n","OK",100))			  //设置STA模式，100ms超时单位，总计5s超时时间
+	{             
+		printf("设置STA模式失败，准备重启\r\n");  //返回非0值，进入if
+		return 2;                                 //返回2
+	}
+	printf("设置STA模式成功\r\n"); 
+
 	printf("准备复位模块\r\n");//设置模式后，需重启才能生效                   
 	if(ESP8266_WiFi_Reset(100))							  //复位，100ms超时单位，总计5s超时时间
 	//if(ESP8266_WiFi_SendCmd("AT+RST\r\n","OK",100))							  //复位，100ms超时单位，总计5s超时时间
@@ -338,15 +346,7 @@ char ESP8266_WiFi_Connect_IoTServer(void)
 		printf("复位失败，准备重启\r\n");	      //返回非0值，进入if
 		return 1;                                 //返回1
 	} 
-	printf("复位成功\r\n"); 
-		 
-	printf("准备设置STA模式\r\n");                
-	if(ESP8266_WiFi_SendCmd("AT+CWMODE=1\r\n","OK",100))			  //设置STA模式，100ms超时单位，总计5s超时时间
-	{             
-		printf("设置STA模式失败，准备重启\r\n");  //返回非0值，进入if
-		return 2;                                 //返回2
-	}
-	printf("设置STA模式成功\r\n");        
+	printf("复位成功\r\n");        
 	                            
 	printf("准备取消自动连接\r\n");            	  
 	if(ESP8266_WiFi_SendCmd("AT+CWAUTOCONN=0\r\n","OK",50))		  //取消自动连接，100ms超时单位，总计5s超时时间
@@ -431,7 +431,15 @@ char ESP8266_Connect_MQTT_Server(void)
 //		return 1;                                 //返回1
 //	} 
 //	printf("AT测试成功\r\n");
-	
+
+	printf("准备设置STA模式\r\n");                
+	if(ESP8266_WiFi_SendCmd("AT+CWMODE=1\r\n","OK",100))			  //设置STA模式，100ms超时单位，总计5s超时时间
+	{             
+		printf("设置STA模式失败，准备重启\r\n");  //返回非0值，进入if
+		return 2;                                 //返回2
+	}
+	printf("设置STA模式成功\r\n");        
+
 	printf("准备复位模块\r\n");//设置模式后，需重启才能生效                   
 	if(ESP8266_WiFi_Reset(100))							  //复位，100ms超时单位，总计5s超时时间
 	//if(ESP8266_WiFi_SendCmd("AT+RST\r\n","OK",100))							  //复位，100ms超时单位，总计5s超时时间
@@ -440,15 +448,6 @@ char ESP8266_Connect_MQTT_Server(void)
 		return 1;                                 //返回1
 	} 
 	printf("复位成功\r\n"); 
-		 
-	printf("准备设置STA模式\r\n");                
-	if(ESP8266_WiFi_SendCmd("AT+CWMODE=1\r\n","OK",100))			  //设置STA模式，100ms超时单位，总计5s超时时间
-	{             
-		printf("设置STA模式失败，准备重启\r\n");  //返回非0值，进入if
-		return 2;                                 //返回2
-	}
-	printf("设置STA模式成功\r\n");                         
-	
 	
 	printf("准备取消自动连接\r\n");            	  
 	if(ESP8266_WiFi_SendCmd("AT+CWAUTOCONN=0\r\n","OK",50))		  //取消自动连接，100ms超时单位，总计5s超时时间
