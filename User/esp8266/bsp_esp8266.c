@@ -1,5 +1,7 @@
 #include "bsp_esp8266.h"
 
+uint8_t g_rx_dma_buf[USART2_DMA_RX_BUFFER_SIZE] = {0};//DMA接收数据缓冲区
+volatile uint32_t g_rx_dma_cnt = 0;// 当前接收的字节数
 
 // DMA配置函数
 void USART2_DMA_Init(void)
@@ -26,13 +28,17 @@ void USART2_DMA_Init(void)
     
     // 配置DMA接收通道
     DMA_DeInit(USART2_RX_DMA_CHANNEL);
+    DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)g_rx_dma_buf; // 设置DMA接收内存地址
+    DMA_InitStructure.DMA_BufferSize = USART2_DMA_RX_BUFFER_SIZE; // 设置DMA接收缓冲区大小
     DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
-    DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;  // 循环接收模式
+    DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;  // 普通模式
     DMA_Init(USART2_RX_DMA_CHANNEL, &DMA_InitStructure);
     
     // 使能USART2的DMA发送和接收请求
     USART_DMACmd(USART2, USART_DMAReq_Tx, ENABLE);
     USART_DMACmd(USART2, USART_DMAReq_Rx, ENABLE);
+
+	DMA_Cmd(USART2_RX_DMA_CHANNEL, ENABLE); // 使能DMA接收通道
 }
 
 // 使用DMA发送数据
