@@ -265,6 +265,9 @@ char ESP8266_WiFi_Connect_TCP_Server(int timeout)
 		printf("连接服务器成功，准备进入透传\r\n");   
 
 		ESP8266_Buf_Clear();
+		/*进入 Wi-Fi 透传模式，ESP8266 设备每次最大接收 2048 字节，最大发送 1460 字节；其他 ESP 设备每次最大接收 8192 字节，最大发送 2920 字节。
+		如果当前接收的数据长度大于最大发送字节数，AT 将立即发送；否则，接收的数据将在 20 ms 内发送。
+		当输入单独一包 +++ 时，退出 透传模式 下的数据发送模式，请至少间隔 1 秒再发下一条 AT 命令。 */
 		USART2_SendString("AT+CIPSEND\r\n");                //发送进入透传指令
 		while(timeout--)							  //等待超时与否
 		{                            
