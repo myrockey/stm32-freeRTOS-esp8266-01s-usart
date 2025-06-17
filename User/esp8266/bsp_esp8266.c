@@ -25,7 +25,7 @@ void USART2_DMA_Init(void)
     DMA_InitStructure.DMA_Priority = DMA_Priority_High;
     DMA_InitStructure.DMA_M2M = DMA_M2M_Disable;
     DMA_Init(USART2_TX_DMA_CHANNEL, &DMA_InitStructure);
-    
+	
     // 配置DMA接收通道
     DMA_DeInit(USART2_RX_DMA_CHANNEL);
     DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)g_rx_dma_buf; // 设置DMA接收内存地址
@@ -39,23 +39,23 @@ void USART2_DMA_Init(void)
     USART_DMACmd(USART2, USART_DMAReq_Rx, ENABLE);
 
 	DMA_Cmd(USART2_RX_DMA_CHANNEL, ENABLE); // 使能DMA接收通道
+	    
+    //DMA_Cmd(USART2_TX_DMA_CHANNEL, ENABLE);
 }
 
 // 使用DMA发送数据
 void USART2_DMA_SendData(uint8_t *pData, uint16_t Size)
-{
-    // 等待上次传输完成
-    while(DMA_GetFlagStatus(USART2_TX_DMA_FLAG_TC) == RESET);
-    
-    // 清除标志
+{   
+	// 清除标志
     DMA_ClearFlag(USART2_TX_DMA_FLAG_GL);
-    
-    // 设置数据地址和长度
-    USART2_TX_DMA_CHANNEL->CMAR = (uint32_t)pData;
-    USART2_TX_DMA_CHANNEL->CNDTR = Size;
-    
+	DMA_Cmd(USART2_TX_DMA_CHANNEL, DISABLE);
+	USART2_TX_DMA_CHANNEL->CMAR = (uint32_t)pData;
+	USART2_TX_DMA_CHANNEL->CNDTR = Size;//重新写入需要传输数据的数量
+    //DMA_SetCurrDataCounter(USART2_TX_DMA_CHANNEL,Size);//重新写入需要传输数据的数量
     // 启动传输
     DMA_Cmd(USART2_TX_DMA_CHANNEL, ENABLE);
+	
+    while(DMA_GetFlagStatus(USART2_TX_DMA_FLAG_TC) == RESET);
 }
 
 // 使用DMA接收数据
@@ -100,23 +100,21 @@ void USART2_Init(void) {
     USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
     USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
     USART_Init(USART2, &USART_InitStructure);
-    USART_Cmd(USART2, ENABLE);
+
+	USART_Cmd(USART2, ENABLE);
 
 	// 初始化DMA
 	USART2_DMA_Init();
-
-    // 配置NVIC
+	
+	// 配置NVIC
     NVIC_InitStructure.NVIC_IRQChannel = USART2_IRQn;
     NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 5;
     NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
     NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
     NVIC_Init(&NVIC_InitStructure);
-
-    // 使能空闲中断，用于DMA接收
-    USART_ITConfig(USART2, USART_IT_IDLE, ENABLE);    
-    // 注释掉RXNE中断，因为使用DMA接收
-    // USART_ITConfig(USART2, USART_IT_RXNE, ENABLE);
-
+	// 使能空闲中断，用于DMA接收
+    USART_ITConfig(USART2, USART_IT_IDLE, ENABLE); 
+	//USART_ITConfig(USART2, USART_IT_TC, ENABLE);//发送数据完成触发	
 }
 
 // 发送字符串到串口
@@ -168,11 +166,12 @@ char ESP8266_WiFi_SendCmd(char *cmd, char *res, uint8_t timeout)
 	while(timeout--)
 	{
 		Delay_ms(100);
+		//printf("cmd rx: size:%d %s\r\n", g_rx_esp8266_cnt,g_rx_esp8266_buf);
 		if(strstr((const char *)g_rx_esp8266_buf, res) != NULL)		//如果检索到关键词
 		{
 			return 0;
 		}
-		printf("timeout:%d \r\n", timeout);		//输出串口的超时时间
+		printf("timeout:%d ", timeout);		//输出串口的超时时间
 	}
 	
 	return 1; 
@@ -430,16 +429,16 @@ char ESP8266_Connect_MQTT_Server(void)
 //		printf("AT测试WIFI模块失败，请检查硬件连接\r\n");	      //返回非0值，进入if
 //		return 1;                                 //返回1
 //	} 
-//	printf("AT测试成功\r\n");
-
+//	printf("AT测试成功\r\n");	
+	
 	printf("准备设置STA模式\r\n");                
 	if(ESP8266_WiFi_SendCmd("AT+CWMODE=1\r\n","OK",100))			  //设置STA模式，100ms超时单位，总计5s超时时间
 	{             
 		printf("设置STA模式失败，准备重启\r\n");  //返回非0值，进入if
 		return 2;                                 //返回2
 	}
-	printf("设置STA模式成功\r\n");        
-
+	printf("设置STA模式成功\r\n");
+	
 	printf("准备复位模块\r\n");//设置模式后，需重启才能生效                   
 	if(ESP8266_WiFi_Reset(100))							  //复位，100ms超时单位，总计5s超时时间
 	//if(ESP8266_WiFi_SendCmd("AT+RST\r\n","OK",100))							  //复位，100ms超时单位，总计5s超时时间
@@ -447,7 +446,8 @@ char ESP8266_Connect_MQTT_Server(void)
 		printf("复位失败，准备重启\r\n");	      //返回非0值，进入if
 		return 1;                                 //返回1
 	} 
-	printf("复位成功\r\n"); 
+	printf("复位成功\r\n");
+	       
 	
 	printf("准备取消自动连接\r\n");            	  
 	if(ESP8266_WiFi_SendCmd("AT+CWAUTOCONN=0\r\n","OK",50))		  //取消自动连接，100ms超时单位，总计5s超时时间
