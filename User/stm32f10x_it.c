@@ -190,9 +190,14 @@ void USART2_IRQHandler(void)
     
     /* 进入临界段 */
     ulReturn = taskENTER_CRITICAL_FROM_ISR();
-
+//	if(USART_GetITStatus(USART2, USART_IT_TC) != RESET)
+//	{
+//		USART_ClearITPendingBit(USART2, USART_IT_TC);         //清除中断标志	
+//		DMA_ClearFlag(DMA1_FLAG_TC7);
+//		DMA_SetCurrDataCounter(USART2_TX_DMA_CHANNEL,0);//重新写入需要传输数据的数量
+//	}
     // 处理空闲中断
-    if(USART_GetITStatus(USART2, USART_IT_IDLE) != RESET)
+     if(USART_GetITStatus(USART2, USART_IT_IDLE) != RESET)
     {
         // 读取SR和DR寄存器以清除IDLE标志
         USART2->SR;

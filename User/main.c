@@ -406,7 +406,7 @@ void Receive_Task(void * pvParameters)
 {
 	float temperature;
 	int len  = 0;
-	Packet_TypeDef packet;//数据包
+	//Packet_TypeDef packet;//数据包
 	while(1)
 	{
 		//服务器连接事件发生执行此任务，否则挂起

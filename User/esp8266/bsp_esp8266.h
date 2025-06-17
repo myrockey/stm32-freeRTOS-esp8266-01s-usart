@@ -45,7 +45,7 @@
 #define USART2_DMA_RX_BUFFER_SIZE       1024
 #define USART2_DMA_TX_BUFFER_SIZE       1024
 
-extern uint8_t g_rx_dma_buf[RX_BUFFER_SIZE];//DMA接收缓冲区
+extern uint8_t g_rx_dma_buf[USART2_DMA_RX_BUFFER_SIZE];//DMA接收缓冲区
 extern volatile uint32_t g_rx_dma_cnt;// 当前接收的字节数
 
 // 定义数据包结构体
