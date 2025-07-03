@@ -45,8 +45,36 @@
 #define USART2_DMA_RX_BUFFER_SIZE       1024
 #define USART2_DMA_TX_BUFFER_SIZE       1024
 
-extern uint8_t g_rx_dma_buf[RX_BUFFER_SIZE];//DMA接收缓冲区
-extern volatile uint32_t g_rx_dma_cnt;// 当前接收的字节数
+// extern uint8_t g_rx_dma_buf[RX_BUFFER_SIZE];//DMA接收缓冲区
+// extern volatile uint32_t g_rx_dma_cnt;// 当前接收的字节数
+
+/**串口接收缓冲区**/
+typedef struct __USART1RXBUFF
+{
+	uint16_t wp;  //接收缓冲区写地址
+	uint16_t rp;  //接收缓冲区的读地址
+	uint8_t  rxarr[USART2_DMA_RX_BUFFER_SIZE];  //接收缓冲区实体
+}_USART1RXBUFF;
+
+/**帧地址结构体**/
+typedef struct __FRAMEADDR
+{
+	uint16_t wpx;  //本帧写地址的索引
+	uint16_t rpx;  //本帧读地址的索引
+}_FRAMEADDR;
+
+#define  FRADDRMAX  10  //最多能记录的帧
+/**帧属性结构体**/
+typedef struct __FRAMEATTRI
+{
+	_FRAMEADDR fraddr[FRADDRMAX];  //每帧的地址，队列主体
+	uint8_t currfra;  //当前处理帧
+	uint8_t nextfra;  //下一个帧
+}_FRAMEATTRI;
+
+extern _USART1RXBUFF RxBuff;  //定义串口接收缓冲区
+extern _FRAMEATTRI   g_Fra;
+
 
 // 定义数据包结构体
 #define PACKET_HEADER 0xAA    // 包头
@@ -68,6 +96,9 @@ typedef struct {
     uint8_t tail;           // 包尾 0x55
 } Packet_TypeDef;
 
+
+//读取接收的缓存数据
+uint8_t GetAFra(uint8_t *pbuff,uint8_t *psize);
 void Delay_ms(uint32_t ms);
 // 串口2初始化函数
 void USART2_Init(void);

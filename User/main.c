@@ -6,7 +6,7 @@
 
 /* 开发版硬件bsp头文件 */
 #include "globals.h" //全局变量头文件
-#include "ring_buff.h"//环形缓冲区
+//#include "ring_buff.h"//环形缓冲区
 #include "timer3.h"
 //#include "timer4.h"
 
@@ -406,6 +406,8 @@ void Receive_Task(void * pvParameters)
 {
 	float temperature;
 	int len  = 0;
+	uint8_t flg = 0;
+	uint8_t received_str[USART2_DMA_RX_BUFFER_SIZE];
 	Packet_TypeDef packet;//数据包
 	while(1)
 	{
@@ -420,10 +422,12 @@ void Receive_Task(void * pvParameters)
 		// 等待IDLE中断的通知
 		ulTaskNotifyTake(pdTRUE, portMAX_DELAY);//等待通知
 
-		len = RingBuff_GetLen(&encoeanBuff);
-        if (len) {
-			uint8_t received_str[len+1];
-			RingBuff_ReadNByte(&encoeanBuff,received_str,len);
+		flg = GetAFra(received_str,&len);//读取接收的数据（由于读取 和 写入是 异步的，读写速度可能不一致，所以不能放中断中处理）
+		if(flg)
+		{
+		//len = RingBuff_GetLen(&encoeanBuff);
+        //if (len) {
+			//RingBuff_ReadNByte(&encoeanBuff,received_str,len);
             received_str[len] = '\0';
             // 输出接收到的字符串
             printf("Received: %s\n", received_str);
@@ -470,7 +474,7 @@ void BSP_Init(void)
 	切忌，千万不要再分组 */
 	NVIC_PriorityGroupConfig( NVIC_PriorityGroup_4 );
 	
-	RingBuff_Init(&encoeanBuff);//环形缓冲区初始化
+	//RingBuff_Init(&encoeanBuff);//环形缓冲区初始化
 	
 	//Delay_init();//延时函数初始化
 	//Tim4_Init(500,7200);//TIM4初始化，定时时间500*7200*1000/7200000 = 50ms

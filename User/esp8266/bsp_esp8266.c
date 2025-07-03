@@ -1,7 +1,57 @@
 #include "bsp_esp8266.h"
 
-uint8_t g_rx_dma_buf[USART2_DMA_RX_BUFFER_SIZE] = {0};//DMA接收数据缓冲区
-volatile uint32_t g_rx_dma_cnt = 0;// 当前接收的字节数
+//uint8_t g_rx_dma_buf[USART2_DMA_RX_BUFFER_SIZE] = {0};//DMA接收数据缓冲区
+//volatile uint32_t g_rx_dma_cnt = 0;// 当前接收的字节数
+
+_USART1RXBUFF RxBuff;  //定义串口接收缓冲区
+_FRAMEATTRI   g_Fra;
+
+ /**
+  * @brief  GetAFra--获取一帧数据
+  * @param  pbuff--获取一帧数据的数组，psize--获取的数目
+  * @retval rtflg--0代表没有获取数据，1代表获取到数据
+  */
+uint8_t GetAFra(uint8_t *pbuff,uint8_t *psize)
+{
+	uint8_t rtflg=0;  //返回值
+	uint16_t fralen=0;  //帧长度
+	if(g_Fra.currfra != g_Fra.nextfra) //如果为真，说明有未处理的帧
+	{
+		printf("RxBuff.rp=%d,RxBuff.wp=%d\r\n",RxBuff.rp,RxBuff.wp);
+		printf("currfra=%d,nextfra=%d\r\n",g_Fra.currfra,g_Fra.nextfra);
+		/*根据每帧的帧属性(起始与结束地址)在串口接收缓冲区主体中获取一帧数据*/
+		if(g_Fra.fraddr[g_Fra.currfra].rpx<g_Fra.fraddr[g_Fra.currfra].wpx)
+		{
+			fralen = g_Fra.fraddr[g_Fra.currfra].wpx-g_Fra.fraddr[g_Fra.currfra].rpx;
+			for((*psize)=0;(*psize)<fralen;(*psize)++)
+			{
+				pbuff[(*psize)] = RxBuff.rxarr[g_Fra.fraddr[g_Fra.currfra].rpx+(*psize)];
+			}
+			g_Fra.fraddr[g_Fra.currfra].rpx=g_Fra.fraddr[g_Fra.currfra].wpx;
+		}
+		else
+		{
+			for((*psize)=0;g_Fra.fraddr[g_Fra.currfra].rpx<USART2_DMA_RX_BUFFER_SIZE;g_Fra.fraddr[g_Fra.currfra].rpx++)
+			{
+				pbuff[(*psize)] = RxBuff.rxarr[g_Fra.fraddr[g_Fra.currfra].rpx];
+				(*psize)++;
+			}
+			g_Fra.fraddr[g_Fra.currfra].rpx = 0;
+			
+			while(g_Fra.fraddr[g_Fra.currfra].rpx<g_Fra.fraddr[g_Fra.currfra].wpx)
+			{
+				pbuff[(*psize)] = RxBuff.rxarr[g_Fra.fraddr[g_Fra.currfra].rpx];
+				(*psize)++;
+				g_Fra.fraddr[g_Fra.currfra].rpx++;
+			}
+			
+		}
+		g_Fra.currfra = (g_Fra.currfra+1)%FRADDRMAX;
+		printf("currfra=%d,nextfra=%d\r\n",g_Fra.currfra,g_Fra.nextfra);
+		rtflg = 1;
+	}
+	return rtflg;
+}
 
 // DMA配置函数
 void USART2_DMA_Init(void)
@@ -31,7 +81,7 @@ void USART2_DMA_Init(void)
     DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)g_rx_dma_buf; // 设置DMA接收内存地址
     DMA_InitStructure.DMA_BufferSize = USART2_DMA_RX_BUFFER_SIZE; // 设置DMA接收缓冲区大小
     DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
-    DMA_InitStructure.DMA_Mode = DMA_Mode_Normal;  // 普通模式
+    DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;  // 循环模式
     DMA_Init(USART2_RX_DMA_CHANNEL, &DMA_InitStructure);
     
     // 使能USART2的DMA发送和接收请求

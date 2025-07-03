@@ -187,7 +187,8 @@ void USART2_IRQHandler(void)
 {
     uint32_t ulReturn;
     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    
+    uint16_t g_rx_dma_cnt = 0;
+
     /* 进入临界段 */
     ulReturn = taskENTER_CRITICAL_FROM_ISR();
 
@@ -198,52 +199,50 @@ void USART2_IRQHandler(void)
         USART2->SR;
         USART2->DR;
         
-        // 停止DMA传输
-        DMA_Cmd(USART2_RX_DMA_CHANNEL, DISABLE);
-        
         // 获取接收到的数据长度
         g_rx_dma_cnt = USART2_DMA_RX_BUFFER_SIZE - DMA_GetCurrDataCounter(USART2_RX_DMA_CHANNEL);
-        
         if(g_rx_dma_cnt > 0)
         {
-            if ((xEventGroupGetBitsFromISR(Event_Handle) & 0x01) == 0)
-            {
-                // 未连接服务器时的数据处理
-                if(g_rx_dma_cnt < USART2_DMA_RX_BUFFER_SIZE)
-                {
-                    Filter_memcpy(g_rx_esp8266_buf, g_rx_dma_buf, g_rx_dma_cnt);
-                    g_rx_esp8266_cnt = g_rx_dma_cnt;
-                }
-                else
-                {
-                  Filter_memcpy(g_rx_esp8266_buf, g_rx_dma_buf, USART2_DMA_RX_BUFFER_SIZE);
-                  g_rx_esp8266_cnt = USART2_DMA_RX_BUFFER_SIZE;
-                  // 可以添加一个标志位表示数据溢出
-                  // uint8_t overflow_flag = 1;
+          // 未连接服务器时的数据处理
+          if ((xEventGroupGetBitsFromISR(Event_Handle) & 0x01) == 0)
+          {
+              if(g_rx_dma_cnt < USART2_DMA_RX_BUFFER_SIZE)
+              {
+                  Filter_memcpy(g_rx_esp8266_buf, RxBuff.rxarr, g_rx_dma_cnt);
+                  g_rx_esp8266_cnt = g_rx_dma_cnt;
+              }
+              else
+              {
+                Filter_memcpy(g_rx_esp8266_buf, RxBuff.rxarr, USART2_DMA_RX_BUFFER_SIZE);
+                g_rx_esp8266_cnt = USART2_DMA_RX_BUFFER_SIZE;
+                // 可以添加一个标志位表示数据溢出
+                // uint8_t overflow_flag = 1;
 
-                  // 可以通过LED或其他方式提示用户数据溢出
-                  // LED_RED_ON();
-                }
-            }
-            else
-            {
-                // 已连接服务器时的数据处理
-                RingBuff_WriteNByte(&encoeanBuff, g_rx_dma_buf, g_rx_dma_cnt);
-                
-                // 重置定时器3计数器（ping包计时器）
-                TIM_SetCounter(TIM3, 0);
+                // 可以通过LED或其他方式提示用户数据溢出
+                // LED_RED_ON();
+              }
+          }
+          else    // 已连接服务器时的数据处理
+          {
+              //异步读取数据
+              RxBuff.wp = g_rx_dma_cnt;  //得到最新帧的结束地址
+              g_Fra.fraddr[g_Fra.nextfra].rpx = RxBuff.rp;  //最新帧的起始地址
+              g_Fra.fraddr[g_Fra.nextfra].wpx = RxBuff.wp;  //最新帧的结束地址
+              g_Fra.nextfra = (g_Fra.nextfra+1)%FRADDRMAX; //g_Fra.nextfra的值被限制再0,1....(FRADDRMAX-1)
+              RxBuff.rp = RxBuff.wp;  //最新帧的起始与结束地址记录完，等待下一次记录
 
-                // 通知接收任务处理数据
-                if(Receive_Task_Handle != NULL)
-                {
-                    vTaskNotifyGiveFromISR(Receive_Task_Handle, &xHigherPriorityTaskWoken);
-                }
-            }
+              //RingBuff_WriteNByte(&encoeanBuff, g_rx_dma_buf, g_rx_dma_cnt);
+              
+              // 重置定时器3计数器（ping包计时器）
+              TIM_SetCounter(TIM3, 0);
+
+              // 通知接收任务处理数据
+              if(Receive_Task_Handle != NULL)
+              {
+                  vTaskNotifyGiveFromISR(Receive_Task_Handle, &xHigherPriorityTaskWoken);
+              }
+          }
         }
-        
-        // 重新设置DMA传输数量并启动DMA
-        USART2_RX_DMA_CHANNEL->CNDTR = USART2_DMA_RX_BUFFER_SIZE;
-        DMA_Cmd(USART2_RX_DMA_CHANNEL, ENABLE);
     }
     
     /* 退出临界段 */
