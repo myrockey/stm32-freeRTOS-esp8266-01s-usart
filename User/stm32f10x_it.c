@@ -211,14 +211,15 @@ void USART2_IRQHandler(void)
           // 未连接服务器时的数据处理
           if ((xEventGroupGetBitsFromISR(Event_Handle) & 0x01) == 0)
           {
+              RxBuff.wp = g_rx_dma_cnt;  //得到最新帧的结束地址
               if(g_rx_dma_cnt < USART2_DMA_RX_BUFFER_SIZE)
               {
-                  Filter_memcpy(g_rx_esp8266_buf, RxBuff.rxarr, g_rx_dma_cnt);
+                  Filter_memcpy(g_rx_esp8266_buf, &RxBuff.rxarr[RxBuff.rp], g_rx_dma_cnt);
                   g_rx_esp8266_cnt = g_rx_dma_cnt;
               }
               else
               {
-                Filter_memcpy(g_rx_esp8266_buf, RxBuff.rxarr, USART2_DMA_RX_BUFFER_SIZE);
+                Filter_memcpy(g_rx_esp8266_buf, &RxBuff.rxarr[RxBuff.rp], USART2_DMA_RX_BUFFER_SIZE);
                 g_rx_esp8266_cnt = USART2_DMA_RX_BUFFER_SIZE;
                 // 可以添加一个标志位表示数据溢出
                 // uint8_t overflow_flag = 1;
@@ -226,6 +227,7 @@ void USART2_IRQHandler(void)
                 // 可以通过LED或其他方式提示用户数据溢出
                 // LED_RED_ON();
               }
+              RxBuff.rp = RxBuff.wp;  //最新帧的起始与结束地址记录完，等待下一次记录
           }
           else    // 已连接服务器时的数据处理
           {
