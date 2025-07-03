@@ -53,7 +53,7 @@ typedef struct __USART1RXBUFF
 {
 	uint16_t wp;  //接收缓冲区写地址
 	uint16_t rp;  //接收缓冲区的读地址
-	uint8_t  rxarr[USART2_DMA_RX_BUFFER_SIZE];  //接收缓冲区实体
+	uint8_t  rxarr[USART2_DMA_RX_BUFFER_SIZE];  //接收缓冲区实体,队列所有数据缓存在这里，所以需要足够大。
 }_USART1RXBUFF;
 
 /**帧地址结构体**/
@@ -63,7 +63,7 @@ typedef struct __FRAMEADDR
 	uint16_t rpx;  //本帧读地址的索引
 }_FRAMEADDR;
 
-#define  FRADDRMAX  10  //最多能记录的帧
+#define  FRADDRMAX  5  //最多能记录的帧，每帧的大小：USART2_DMA_RX_BUFFER_SIZE/FRADDRMAX
 /**帧属性结构体**/
 typedef struct __FRAMEATTRI
 {
