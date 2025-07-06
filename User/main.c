@@ -200,7 +200,7 @@ void AppTaskCreate(void)
 	/* 创建KEY_Task任务 */
 	xReturn = xTaskCreate((TaskFunction_t)Send_Task,//任务函数
 	(const char*)"Send_Task",//任务名称
-	(uint16_t)STACK_SIZE,//任务堆栈大小
+	512,//任务堆栈大小
 	(void*)NULL,//传递给任务函数的参数
 	(UBaseType_t)3,//任务优先级
 	(TaskHandle_t*)&Send_Task_Handle);//任务控制块指针
@@ -235,7 +235,7 @@ void AppTaskCreate(void)
 	/* 创建Receive_Task任务 */
 	xReturn = xTaskCreate((TaskFunction_t)Receive_Task,//任务函数
 	(const char*)"Receive_Task",//任务名称
-	(uint16_t)STACK_SIZE,//任务堆栈大小
+	512,//任务堆栈大小
 	(void*)NULL,//传递给任务函数的参数
 	(UBaseType_t)5,//任务优先级
 	(TaskHandle_t*)&Receive_Task_Handle);//任务控制块指针
