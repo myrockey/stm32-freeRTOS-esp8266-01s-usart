@@ -248,7 +248,7 @@ char ESP8266_WiFi_Connect_TCP_Server(int timeout)
 	{                           
 		//printf("cipstart res:%s\n",g_rx_esp8266_buf);
 		Delay_ms(100);                             	  //延时100ms	
-		if(strstr((const char*)g_rx_esp8266_buf, "CONNECT"))            //如果接受到CONNECT表示连接成功
+		if(strstr((const char*)g_rx_esp8266_buf, "CONNECT") || strstr((const char*)g_rx_esp8266_buf, "OK"))            //如果接受到CONNECT表示连接成功
 		{
 			break;                                    //跳出while循环
 		}
