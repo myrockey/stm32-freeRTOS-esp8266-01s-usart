@@ -11,7 +11,7 @@ _FRAMEATTRI   g_Fra;
   * @param  pbuff--获取一帧数据的数组，psize--获取的数目
   * @retval rtflg--0代表没有获取数据，1代表获取到数据
   */
-uint8_t GetAFra(uint8_t *pbuff,uint8_t *psize)
+uint8_t GetAFra(uint8_t *pbuff,uint16_t *psize)
 {
 	uint8_t rtflg=0;  //返回值
 	uint16_t fralen=0;  //帧长度
@@ -78,7 +78,7 @@ void USART2_DMA_Init(void)
 	
     // 配置DMA接收通道
     DMA_DeInit(USART2_RX_DMA_CHANNEL);
-    DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)g_rx_dma_buf; // 设置DMA接收内存地址
+    DMA_InitStructure.DMA_MemoryBaseAddr = (uint32_t)RxBuff.rxarr; // 设置DMA接收内存地址
     DMA_InitStructure.DMA_BufferSize = USART2_DMA_RX_BUFFER_SIZE; // 设置DMA接收缓冲区大小
     DMA_InitStructure.DMA_DIR = DMA_DIR_PeripheralSRC;
     DMA_InitStructure.DMA_Mode = DMA_Mode_Circular;  // 循环模式
@@ -493,8 +493,7 @@ char ESP8266_Connect_MQTT_Server(void)
 		printf("复位失败，准备重启\r\n");	      //返回非0值，进入if
 		return 1;                                 //返回1
 	} 
-	printf("复位成功\r\n");
-	       
+	printf("复位成功\r\n");     
 	
 	printf("准备取消自动连接\r\n");            	  
 	if(ESP8266_WiFi_SendCmd("AT+CWAUTOCONN=0\r\n","OK",50))		  //取消自动连接，100ms超时单位，总计5s超时时间

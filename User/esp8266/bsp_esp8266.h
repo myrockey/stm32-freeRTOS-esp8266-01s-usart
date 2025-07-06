@@ -98,7 +98,7 @@ typedef struct {
 
 
 //读取接收的缓存数据
-uint8_t GetAFra(uint8_t *pbuff,uint8_t *psize);
+uint8_t GetAFra(uint8_t *pbuff,uint16_t *psize);
 void Delay_ms(uint32_t ms);
 // 串口2初始化函数
 void USART2_Init(void);

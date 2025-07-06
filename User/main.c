@@ -292,7 +292,7 @@ void WIFI_Task(void * pvParameters)
 	while(1)
 	{
 		printf("需要连接服务器\r\n");                 
-		TIM_Cmd(TIM4, DISABLE);                       //关闭TIM4 
+		//TIM_Cmd(TIM4, DISABLE);                       //关闭TIM4 
 		TIM_Cmd(TIM3, DISABLE);                       //关闭TIM3
 		xEventGroupClearBits(Event_Handle, PING_MODE);//关闭发送PING包的定时器3，清除事件标志位
 		ESP8266_Buf_Clear();//清空接收缓存区
@@ -405,7 +405,7 @@ void Temperature_Task(void *pvParameters)
 void Receive_Task(void * pvParameters)
 {
 	float temperature;
-	int len  = 0;
+	uint16_t len  = 0;
 	uint8_t flg = 0;
 	uint8_t received_str[USART2_DMA_RX_BUFFER_SIZE];
 	//Packet_TypeDef packet;//数据包
