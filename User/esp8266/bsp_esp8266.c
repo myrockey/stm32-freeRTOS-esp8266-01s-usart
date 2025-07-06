@@ -225,6 +225,13 @@ char ESP8266_WiFi_JoinAP(int timeout)
 	return 1;                              //如果timeout<=0，说明超时时间到了，也没能收到WIFI GOT IP，返回1                                              //正确，返回0
 }
 
+//退出透传模式
+void ESP8266_EXIT_SEND_MODE(void)
+{
+	USART2_SendString("+++");//退出透传模式，回到普通模式（AT指令）
+	Delay_ms(2000);
+}
+
 /*-------------------------------------------------*/
 /*函数名：连接TCP服务器，并进入透传模式            */
 /*参  数：timeout： 超时时间（100ms的倍数）        */
@@ -239,6 +246,7 @@ char ESP8266_WiFi_Connect_TCP_Server(int timeout)
 	USART2_SendString(cmd_buffer);//发送连接服务器指令
 	while(timeout--)								  //等待超时与否
 	{                           
+		//printf("cipstart res:%s\n",g_rx_esp8266_buf);
 		Delay_ms(100);                             	  //延时100ms	
 		if(strstr((const char*)g_rx_esp8266_buf, "CONNECT"))            //如果接受到CONNECT表示连接成功
 		{
@@ -257,6 +265,7 @@ char ESP8266_WiFi_Connect_TCP_Server(int timeout)
 	printf("\r\n");                                   
 	if(timeout <= 0)
 	{
+		ESP8266_EXIT_SEND_MODE();
 		return 3;                         //超时错误，返回3
 	}
 	else                                              //连接成功，准备进入透传
@@ -506,10 +515,25 @@ void ESP8266_CheckMQTTStatus(void)
 	//Delay_ms(500);
 }
 
+// ping心跳当前TCP连接状态 约定：发送 test 服务器应答返回：testOK
+void ESP8266_CheckTCPStatus(void)
+{
+	USART2_SendString("test");
+	//Delay_ms(500);
+}
+
 void ESP8266_MQTT_Publish(char* message) {
     char cmd_buffer[CMD_BUFFER_SIZE];
 	//char message[] = "{\\\"temperature\\\":30}";
 	snprintf(cmd_buffer, sizeof(cmd_buffer), "AT+MQTTPUB=0,\"%s\",\"%s\",0,0\r\n",MQTT_TOPIC,message);
+	USART2_SendString(cmd_buffer);
+	Delay_ms(2000);
+}
+
+void ESP8266_TCP_Publish(char* message) {
+    char cmd_buffer[CMD_BUFFER_SIZE];
+	//char message[] = "{\\\"temperature\\\":30}";
+	snprintf(cmd_buffer, sizeof(cmd_buffer), "%s\r\n",message);
 	USART2_SendString(cmd_buffer);
 	Delay_ms(2000);
 }

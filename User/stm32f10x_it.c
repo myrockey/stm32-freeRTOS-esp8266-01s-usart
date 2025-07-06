@@ -298,17 +298,17 @@ void TIM3_IRQHandler(void)
 		switch(pingFlag) 					//判断pingFlag的状态
 		{                               
 			case 0:							//如果pingFlag等于0，表示正常状态，发送Ping报文  
-					ESP8266_CheckMQTTStatus(); 		//添加Ping报文到发送缓冲区  
+					ESP8266_CheckTCPStatus(); 		//添加Ping报文到发送缓冲区  
 					break;
 			case 1:							//如果pingFlag等于1，说明上一次发送到的ping报文，没有收到服务器回复，所以1没有被清除为0，可能是连接异常，我们要启动快速ping模式
 					TIM3_ENABLE_2S(); 	    //我们将定时器6设置为2s定时,快速发送Ping报文
 					xEventGroupClearBitsFromISR(Event_Handle, PING_MODE);//关闭发送PING包的定时器3，设置事件标志位
-					ESP8266_CheckMQTTStatus();			//添加Ping报文到发送缓冲区  
+					ESP8266_CheckTCPStatus();			//添加Ping报文到发送缓冲区  
 					break;
 			case 2:							//如果pingFlag等于2，说明还没有收到服务器回复
 			case 3:				            //如果pingFlag等于3，说明还没有收到服务器回复
 			case 4:				            //如果pingFlag等于4，说明还没有收到服务器回复	
-					ESP8266_CheckMQTTStatus();  		//添加Ping报文到发送缓冲区 
+					ESP8266_CheckTCPStatus();  		//添加Ping报文到发送缓冲区 
 					break;
 			case 5:							//如果pingFlag等于5，说明我们发送了多次ping，均无回复，应该是连接有问题，我们重启连接
 					xTaskResumeFromISR(WIFI_Task_Handle);        //连接状态置0，表示断开，没连上服务器

@@ -29,9 +29,13 @@
 #define CMD_BUFFER_SIZE 256
 
 //tcp连接服务器
-#define TCP_Server_IP "gz-3-device.iot-api.com"
-#define TCP_Server_Port 28801
-#define TCP_Server_Password "qDsJd0CqfV&ij6kv7tstqsrpzlx"
+//#define TCP_Server_IP "gz-3-device.iot-api.com"
+//#define TCP_Server_Port 28801
+//#define TCP_Server_Password "qDsJd0CqfV&ij6kv7tstqsrpzlx"
+//tcp 本地测试地址
+#define TCP_Server_IP "12.tcp.vip.cpolar.cn"
+#define TCP_Server_Port 11114
+
 
 // USART2 DMA配置
 #define USART2_TX_DMA_CHANNEL           DMA1_Channel7
@@ -101,7 +105,9 @@ char ESP8266_WiFi_MQTT_Connect_IoTServer(void);
 void ESP8266_CheckWiFiStatus(void);
 // 查询当前MQTT连接状态 返回：+MQTTCONN:<LinkID>,<state>,<scheme><"host">,<port>,<"path">,<reconnect> 且 OK
 void ESP8266_CheckMQTTStatus(void);
+void ESP8266_CheckTCPStatus(void);
 void ESP8266_MQTT_Publish(char* message);
+void ESP8266_TCP_Publish(char* message);
 char ESP8266_MQTT_Subscribe(void);
 
 // 添加DMA相关函数声明

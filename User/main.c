@@ -200,7 +200,7 @@ void AppTaskCreate(void)
 	/* 创建KEY_Task任务 */
 	xReturn = xTaskCreate((TaskFunction_t)Send_Task,//任务函数
 	(const char*)"Send_Task",//任务名称
-	(uint16_t)STACK_SIZE,//任务堆栈大小
+	(uint16_t)512,//任务堆栈大小
 	(void*)NULL,//传递给任务函数的参数
 	(UBaseType_t)3,//任务优先级
 	(TaskHandle_t*)&Send_Task_Handle);//任务控制块指针
@@ -235,7 +235,7 @@ void AppTaskCreate(void)
 	/* 创建Receive_Task任务 */
 	xReturn = xTaskCreate((TaskFunction_t)Receive_Task,//任务函数
 	(const char*)"Receive_Task",//任务名称
-	(uint16_t)STACK_SIZE,//任务堆栈大小
+	(uint16_t)512,//任务堆栈大小
 	(void*)NULL,//传递给任务函数的参数
 	(UBaseType_t)5,//任务优先级
 	(TaskHandle_t*)&Receive_Task_Handle);//任务控制块指针
@@ -296,9 +296,9 @@ void WIFI_Task(void * pvParameters)
 		TIM_Cmd(TIM3, DISABLE);                       //关闭TIM3
 		xEventGroupClearBits(Event_Handle, PING_MODE);//关闭发送PING包的定时器3，清除事件标志位
 		ESP8266_Buf_Clear();//清空接收缓存区
-		if(ESP8266_WiFi_MQTT_Connect_IoTServer() == 0)			  //如果WiFi连接云服务器函数返回0，表示正确，进入if
+		if(ESP8266_WiFi_Connect_IoTServer() == 0)			  //如果WiFi连接云服务器函数返回0，表示正确，进入if
 		{   			     
-			printf("WIFI及MQTT服务器连接并订阅成功\r\n");            
+			printf("WIFI及TCP服务器连接成功\r\n");            
 			ESP8266_Buf_Clear();//清空接收缓存区
 			//MQTT_Buff_Init();                         //初始化发送缓冲区
 			
@@ -346,7 +346,7 @@ void Send_Task(void *pvParameters)
 		{
 			snprintf(message,sizeof(message),"{\\\"temperature\\\": %.2f}",r_queue);	
 			taskENTER_CRITICAL(); //进入临界区，防止中断打断
-			ESP8266_MQTT_Publish(message);//添加数据，发布给服务器
+			ESP8266_TCP_Publish(message);//添加数据，发布给服务器
 			taskEXIT_CRITICAL();  //退出临界区
 			printf("send Data to ThingsCloud:本次接收到的数据是%.2f\r\n",r_queue);		
 		}
@@ -430,7 +430,7 @@ void Receive_Task(void * pvParameters)
 
             // ping状态，mqtt连接成功
 			//+MQTTCONN:0,6,1,"gz-3-mqtt.iot-api.com","1883","",1\r\n\r\nOK
-            if (strstr((const char*)received_str, "+MQTTCONN:0,6") != NULL && strstr((const char*)received_str, "OK") != NULL) {
+            if (strstr((const char*)received_str, "testOK") != NULL) {
                 printf("PING报文回复\r\n");                       
 				if(pingFlag == 1)
 				{                   						     //如果pingFlag=1，表示第一次发送
